@@ -90,8 +90,9 @@
     ['uniqueness','玩法独特'],['priceCover','价格覆盖'],['digitalFit','数字化适配']
   ];
   var PLAYABLE = { 7: '../yunshan-3d-demo/index.html' }; // 云闪：F2 配置化 Demo（相对路径，兼容 GitHub Pages 子路径）
-  var CATICON = { '桌面轮盘': '🎡' };
+  var CATICON = { '桌面轮盘': '🎡' }; // 品类级图标覆盖（兜底=该品类首件展品的 icon）
   function iconOf(i) { return CATICON[i.category] || i.icon; }
+  function catIconOf(cat) { return CATICON[cat] || (catOf(cat)[0] || {}).icon || '🧩'; }
 
   function $(id) { return document.getElementById(id); }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]; }); }
@@ -136,7 +137,7 @@
   function cardHTML(i) {
     var pct = Math.round(i.total / 30 * 100);
     var ready = i.modelStatus && i.modelStatus.indexOf('完成') >= 0;
-    return '<div class="card" data-id="' + i.id + '">' +
+    return '<div class="card" data-id="' + i.id + '" tabindex="0" role="button" aria-label="查看 ' + esc(i.model) + ' 详情">' +
       '<span class="cat">' + esc(i.category) + '</span>' +
       '<div class="icon">' + iconOf(i) + '</div>' +
       '<h3>' + esc(i.model) + '</h3>' +
@@ -167,7 +168,7 @@
     if (c && !c.dataset.done) {
       c.innerHTML = CATS.map(function (cat) {
         var n = catOf(cat).length;
-        return '<div class="catbtn" data-cat="' + cat + '"><span class="ic">' + (ITEMS.find ? (catOf(cat)[0] || {}).icon || '🧩' : '🧩') + '</span>' + cat + '<span class="cnt">' + n + '</span></div>';
+        return '<div class="catbtn" data-cat="' + cat + '" tabindex="0" role="button" aria-label="查看' + cat + '品类">' + '<span class="ic">' + catIconOf(cat) + '</span>' + cat + '<span class="cnt">' + n + '</span></div>';
       }).join('');
       c.dataset.done = '1';
     }
@@ -191,7 +192,7 @@
   function renderCatalog(cat) {
     var f = $('filters');
     if (!f.dataset.done) {
-      f.innerHTML = '<button data-cat="" class="on">全部 ' + ITEMS.length + '</button>' + CATS.map(function (c) {
+      f.innerHTML = '<button data-cat=""' + (!cat ? ' class="on"' : '') + '>全部 ' + ITEMS.length + '</button>' + CATS.map(function (c) {
         var n = catOf(c).length; if (!n) return '';
         return '<button data-cat="' + c + '"' + (c === cat ? ' class="on"' : '') + '>' + c + ' ' + n + '</button>';
       }).join('');
@@ -260,16 +261,28 @@
   /* ---------- 事件绑定 ---------- */
   function bindCards(root) {
     if (!root) return;
+    function go(id) { if (id) location.hash = '#/item/' + id; }
     root.addEventListener('click', function (e) {
       var c = e.target.closest('.card'); if (!c) return;
-      location.hash = '#/item/' + c.dataset.id;
+      go(c.dataset.id);
+    });
+    root.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      var c = e.target.closest('.card'); if (!c) return;
+      e.preventDefault(); go(c.dataset.id);
     });
   }
   function bindCats(root) {
     if (!root) return;
+    function go(cat) { if (cat) location.hash = '#/catalog?cat=' + encodeURIComponent(cat); }
     root.addEventListener('click', function (e) {
       var b = e.target.closest('.catbtn'); if (!b) return;
-      location.hash = '#/catalog?cat=' + encodeURIComponent(b.dataset.cat);
+      go(b.dataset.cat);
+    });
+    root.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      var b = e.target.closest('.catbtn'); if (!b) return;
+      e.preventDefault(); go(b.dataset.cat);
     });
   }
 
@@ -302,8 +315,12 @@
   /* ---------- 顶部统计（静态） ---------- */
   var ts = $('topstats');
   if (ts) {
-    var first = ITEMS.filter(function (i) { return i.priority === '首批'; }).length;
-    ts.innerHTML = '<span>首批 <b>' + first + '</b> 款</span><span>在库 <b>' + ITEMS.length + '</b> 款</span>';
+    if (!ITEMS.length) {
+      ts.innerHTML = '<span style="color:#e08a4c;">⚠ 数据未加载：data.js 缺失或顺序错误</span>';
+    } else {
+      var first = ITEMS.filter(function (i) { return i.priority === '首批'; }).length;
+      ts.innerHTML = '<span>首批 <b>' + first + '</b> 款</span><span>在库 <b>' + ITEMS.length + '</b> 款</span>';
+    }
   }
 
   router();

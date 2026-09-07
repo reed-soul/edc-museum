@@ -106,7 +106,7 @@ import { yunshanConfig as CFG } from './models/yunshan.js';
   const fallback = document.getElementById('fallback');
   function showFallback(msg){
     fallback.style.display='block';
-    fallback.innerHTML = '<div style="font-size:16px;font-weight:600;margin-bottom:12px;">页面未能启动</div><div>'+msg+'</div><div style="margin-top:12px;">请确认网络可访问 <span class="code">cdn.jsdelivr.net</span>（Three.js CDN），并用支持 WebGL 的现代浏览器打开本文件。</div>';
+    fallback.innerHTML = '<div style="font-size:16px;font-weight:600;margin-bottom:12px;">页面未能启动</div><div>'+msg+'</div><div style="margin-top:12px;">请用支持 WebGL 的现代浏览器打开，并确认 <span class="code">vendor/</span>（Three.js 本地依赖）与 <span class="code">models/yunshan.js</span> 文件完整。</div>';
     document.getElementById('stage').style.display='none';
   }
   if(!window.WebGLRenderingContext){
@@ -445,8 +445,10 @@ import { yunshanConfig as CFG } from './models/yunshan.js';
 
   function setPointer(e){
     const rect = renderer.domElement.getBoundingClientRect();
-    pointer.x = ((e.clientX||e.touches[0].clientX) - rect.left) / rect.width * 2 - 1;
-    pointer.y = -(((e.clientY||e.touches[0].clientY) - rect.top) / rect.height) * 2 + 1;
+    const cx = (typeof e.clientX === 'number' && e.clientX !== 0) ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : e.clientX);
+    const cy = (typeof e.clientY === 'number' && e.clientY !== 0) ? e.clientY : (e.touches && e.touches[0] ? e.touches[0].clientY : e.clientY);
+    pointer.x = (cx - rect.left) / rect.width * 2 - 1;
+    pointer.y = -((cy - rect.top) / rect.height) * 2 + 1;
   }
   function hitSlider(e){
     setPointer(e);
@@ -546,11 +548,9 @@ import { yunshanConfig as CFG } from './models/yunshan.js';
     const dt = Math.min(clock.getDelta(), 0.05);
     const t = clock.elapsedTime;
 
-    // 查看模式：展台缓慢自转
+    // 查看模式：展台缓慢自转；把玩模式：模型不转、相机方向固定
     if(mode==='view'){
       product.rotation.y += dt * 0.35;
-    } else {
-      // 把玩模式：相机方向固定，模型不转
     }
 
     // 巴克球端部弹跳动画

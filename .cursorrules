@@ -1,0 +1,44 @@
+# EDC 数字博物馆 · Cursor Agent 规则
+
+Web3D 云把玩平台静态站点（museum/ + yunshan-3d-demo/），无构建，纯 HTML/CSS/JS + Three.js（本地 vendor）。
+
+## 技术栈
+
+- museum：原生 JS SPA（hash 路由）、SVG 手绘雷达图、CSS 变量深色金属风
+- yunshan-3d-demo：Three.js 0.160（`./vendor/` 本地化 importmap，**不引 CDN**）、参数配置驱动（`models/yunshan.js` 的 `yunshanConfig`）
+- 部署：GitHub Pages 子路径 `/edc-museum/` → **一切路径必须相对**
+
+## 代码评审清单（改完代码逐条过）
+
+### 安全
+- [ ] 所有外部数据（data.js 字段）插入 innerHTML 前是否过 `esc()`？（`& < > " '`）
+- [ ] iframe src 是否只来自可信常量（PLAYABLE），不接受用户输入？
+- [ ] 有没有把 token / API key / 个人信息写进前端代码？
+
+### 正确性
+- [ ] 绝对路径是否清干净？（grep `src="/` `href="/`）
+- [ ] 品类/统计是否由数据动态推导，而非硬编码？
+- [ ] hash 路由解析是否处理了空值 / 非法 id（`#/item/abc` 不白屏）？
+- [ ] 新增数据字段是否与飞书表格口径一致（勿编造、勿手抄）？
+- [ ] 数字字段类型统一（如 srcCount 字符串 vs 数值混用）？
+
+### 可访问性与降级
+- [ ] 可点击的 div/card 是否有 `tabindex="0"` + Enter 键支持？
+- [ ] 图表/iframe 是否有 aria-label / title？
+- [ ] Three.js 加载失败 / WebGL 不可用 / 数据为空时，是否有可见降级文案而不是白屏？
+
+### 可维护性
+- [ ] 可把玩 Demo 的数值参数是否都在 yunshanConfig 里（配置驱动，不散落硬编码）？
+- [ ] 品类图标等映射是否集中在 CATICON 一类常量处？
+- [ ] 空分支 / 死代码 / 注释掉的代码是否删除？
+
+### 验证
+- [ ] `node --check` 通过
+- [ ] 无头 Chrome CDP 回归（数据数、各视图、过滤、详情、iframe、零异常）
+- [ ] 线上 Pages 用 `Page.reload ignoreCache` 再断言（防缓存误判）
+
+## 编辑纪律
+
+- 用户点名范围外的东西不擅自改；数据值以飞书表格为准，个人判断单独标注
+- 不做大重构当小修复；评审发现的问题分 P0（必挂/必崩）/P1（健壮性）/P2（维护性）处理
+- 交付前跑「可能失败的动作」验证，不靠"应该没问题"

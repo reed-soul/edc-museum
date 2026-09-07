@@ -1,6 +1,7 @@
 // EDC 数字博物馆 · 数据源：飞书选款清单（2026-09-07 revision 43 导出，19 款）
 // 字段口径与《EDC数字博物馆-首期选款清单》一致
-window.EDC_ITEMS = [
+// 防御：若已存在（如热更新/重复注入）则保留既有数据，不覆盖
+window.EDC_ITEMS = window.EDC_ITEMS || [
  {
   "id": 1,
   "brand": "傲娇的老铁匠",
