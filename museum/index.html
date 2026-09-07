@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EDC 数字博物馆 · 云把玩</title>
+<link rel="stylesheet" href="style.css">
+<script src="data.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">EDC<em>·</em>数字博物馆</span>
+    <span class="tag">WEB3D 云把玩</span>
+  </div>
+  <nav class="nav" id="nav">
+    <a href="#/home" data-route="home">首页</a>
+    <a href="#/catalog" data-route="catalog">展品库</a>
+    <a href="#/about" data-route="about">关于</a>
+  </nav>
+  <div class="topstats" id="topstats"></div>
+</header>
+
+<main class="main">
+
+  <!-- ========== 首页 ========== -->
+  <section class="view" id="view-home">
+    <div class="hero">
+      <h1>男人的 <em>赛博博物馆</em></h1>
+      <p>把每一件 EDC 的颜值、声音与手感，搬进你的浏览器。逛展、云把玩、看行情——指尖的方寸之间，是另一个世界。</p>
+      <div class="cta">
+        <a class="btn solid" href="#/catalog">进入展品库</a>
+        <a class="btn ghost" href="#/play/7">云把玩 · 云闪 →</a>
+      </div>
+    </div>
+    <div class="statrow" id="stats"></div>
+
+    <div class="sec"><h2>镇馆之宝</h2><span class="sub">按六维综合评分（热度/市场/品类/玩法/价格/数字化）</span></div>
+    <div class="grid" id="top3"></div>
+
+    <div class="sec"><h2>品类展厅</h2><span class="sub">按玩法结构分类 · 点击进入</span></div>
+    <div class="catgrid" id="cats"></div>
+
+    <div class="sec"><h2>数据飞轮</h2><span class="sub">博物馆如何运转：数据说话，玩家共创</span></div>
+    <div class="flywheel" id="flywheel"></div>
+  </section>
+
+  <!-- ========== 展品库 ========== -->
+  <section class="view" id="view-catalog">
+    <div class="sec" style="margin-top:0;"><h2>展品库</h2><span class="sub">首批 13 款 + 二期候选 6 款 · 点击卡片看详情</span></div>
+    <div class="filters" id="filters"></div>
+    <div class="grid" id="catalog-grid"></div>
+  </section>
+
+  <!-- ========== 条目详情 ========== -->
+  <section class="view" id="view-item">
+    <div id="item-body"></div>
+  </section>
+
+  <!-- ========== 云把玩 ========== -->
+  <section class="view" id="view-play">
+    <div id="play-body"></div>
+  </section>
+
+  <!-- ========== 关于 ========== -->
+  <section class="view" id="view-about">
+    <div class="sec" style="margin-top:0;"><h2>关于这座博物馆</h2></div>
+    <div class="flywheel" style="line-height:2;">
+      <p><b>定位</b>：EDC 数字博物馆是一个 Web3D 云把玩平台——先做 PGC 内容（选款、3D 建模、声音档案、行情指数），再开放玩家社区（收藏册、手感评分、把玩投稿），最终形成 EDC 生态，向文玩手串等相邻品类扩张。</p>
+      <p><b>数据方法</b>：收录哪款不由个人喜好决定，由"四类信号源 × 六维评分"决定（热度、市场验证、品类代表、玩法独特、价格覆盖、数字化适配）。</p>
+      <p><b>数据来源</b>：展品数据来自飞书《EDC数字博物馆-首期选款清单》（19 款，revision 43，2026-09-07 导出）。云闪 3D 模型为程序化建模占位，AI 图生 3D 替换后置。</p>
+      <p><b>当前进度</b>：M1 单款可复制 Demo 完成（云闪 · F2 把玩参数配置化 · 浏览器回归全绿）；F1 图生 3D 选型调研完成（混元主线 / Seed3D 备选 / Tripo 兜底）。</p>
+    </div>
+  </section>
+
+</main>
+
+<footer class="foot">
+  EDC 数字博物馆 · 数据源：<a href="https://my.feishu.cn/sheets/OWbRsg0HMhOqbyttr4RcKFPmnHd" target="_blank" rel="noopener">首期选款清单（飞书表格）</a> · 云把玩 Demo：<a href="../yunshan-3d-demo/index.html" target="_blank" rel="noopener">云闪 · KOVO</a>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+  var ITEMS = window.EDC_ITEMS || [];
+  var CATS = (function () { var s = [], m = {}; ITEMS.forEach(function (i) { if (!m[i.category]) { m[i.category] = 1; s.push(i.category); } }); return s; })();
+  var DIMS = [
+    ['heat','热度'],['market','市场验证'],['categoryRep','品类代表'],
+    ['uniqueness','玩法独特'],['priceCover','价格覆盖'],['digitalFit','数字化适配']
+  ];
+  var PLAYABLE = { 7: '../yunshan-3d-demo/index.html' }; // 云闪：F2 配置化 Demo（相对路径，兼容 GitHub Pages 子路径）
+  var CATICON = { '桌面轮盘': '🎡' };
+  function iconOf(i) { return CATICON[i.category] || i.icon; }
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]; }); }
+  function catOf(c) { return ITEMS.filter(function (i) { return i.category === c; }); }
+  function byId(id) { for (var i = 0; i < ITEMS.length; i++) if (ITEMS[i].id === id) return ITEMS[i]; return null; }
+
+  /* ---------- 雷达图（SVG 手绘，六维 1-5） ---------- */
+  function radarSVG(item, size) {
+    size = size || 340;
+    var cx = size / 2, cy = size / 2 - 6, R = size * 0.27, r0 = R * 0.22;
+    var N = 6, pts = [];
+    function P(i, r) {
+      var a = Math.PI / 2 + i * 2 * Math.PI / N; // 从顶部顺时针
+      return [cx + r * Math.cos(a), cy - r * Math.sin(a)];
+    }
+    function poly(r, cls) {
+      var s = '';
+      for (var i = 0; i < N; i++) { var p = P(i, r); s += (i ? ' L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1); }
+      return '<path d="' + s + ' Z" fill="none" stroke="' + cls + '" stroke-width="1"/>';
+    }
+    var grid = '';
+    for (var g = 1; g <= 5; g++) grid += poly(R * g / 5, g === 5 ? 'rgba(124,196,232,0.35)' : 'rgba(255,255,255,0.08)');
+    grid += poly(R * 0.96, 'rgba(79,195,247,0.4)');
+    var dataPts = '';
+    for (var i = 0; i < N; i++) {
+      var v = Math.max(1, Math.min(5, Number(item[DIMS[i][0]]) || 1));
+      var p = P(i, r0 + (R - r0) * (v - 1) / 4);
+      dataPts += (i ? ' L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1);
+    }
+    var fill = '<path d="' + dataPts + ' Z" fill="rgba(79,195,247,0.22)" stroke="#4fc3f7" stroke-width="2" stroke-linejoin="round"/>';
+    var labels = '', dots = '';
+    for (var j = 0; j < N; j++) {
+      var lp = P(j, R * 1.16), dp = P(j, r0 + (R - r0) * (Math.max(1, Math.min(5, Number(item[DIMS[j][0]]) || 1)) - 1) / 4);
+      labels += '<text x="' + lp[0].toFixed(1) + '" y="' + (lp[1] + 4).toFixed(1) + '" text-anchor="middle" font-size="10.5" fill="#8fa1b3">' + DIMS[j][1] + '</text>';
+      dots += '<circle cx="' + dp[0].toFixed(1) + '" cy="' + dp[1].toFixed(1) + '" r="3" fill="#4fc3f7"/>';
+    }
+    var score = '<text x="' + cx + '" y="' + (cy + 8) + '" text-anchor="middle" font-size="22" font-weight="800" fill="#7cc4e8" font-family="monospace">' + item.total + '</text>';
+    return '<svg class="radar" viewBox="0 0 ' + size + ' ' + (size * 0.82) + '" role="img" aria-label="六维评分雷达图">' + grid + fill + dataPts + dots + labels + score + '</svg>';
+  }
+
+  /* ---------- 卡片 ---------- */
+  function cardHTML(i) {
+    var pct = Math.round(i.total / 30 * 100);
+    var ready = i.modelStatus && i.modelStatus.indexOf('完成') >= 0;
+    return '<div class="card" data-id="' + i.id + '">' +
+      '<span class="cat">' + esc(i.category) + '</span>' +
+      '<div class="icon">' + iconOf(i) + '</div>' +
+      '<h3>' + esc(i.model) + '</h3>' +
+      '<div class="brand">' + esc(i.brand) + '<span class="price">' + esc(i.price) + '</span></div>' +
+      '<div class="foot"><span class="score">' + i.total + '</span>' +
+      '<span class="status' + (ready ? ' ready' : '') + '">' + (ready ? '可把玩' : (i.modelStatus || '待建模')) + '</span></div>' +
+      '<div class="bar" style="width:' + pct + '%"></div>' +
+      '</div>';
+  }
+
+  /* ---------- 视图渲染 ---------- */
+  function renderHome() {
+    var s = $('stats');
+    if (s && !s.dataset.done) {
+      var first = ITEMS.filter(function (i) { return i.priority === '首批'; }).length;
+      var cats = {}; ITEMS.forEach(function (i) { cats[i.category] = 1; });
+      var played = ITEMS.filter(function (i) { return PLAYABLE[i.id]; }).length;
+      s.innerHTML =
+        stat('收录', first + ' 款') +
+        stat('二期候选', ITEMS.length - first + ' 款') +
+        stat('品类', Object.keys(cats).length + ' 类') +
+        stat('云把玩', played + ' 款');
+      s.dataset.done = '1';
+    }
+    var top = ITEMS.slice().sort(function (a, b) { return b.total - a.total; }).slice(0, 3);
+    $('top3').innerHTML = top.map(cardHTML).join('');
+    var c = $('cats');
+    if (c && !c.dataset.done) {
+      c.innerHTML = CATS.map(function (cat) {
+        var n = catOf(cat).length;
+        return '<div class="catbtn" data-cat="' + cat + '"><span class="ic">' + (ITEMS.find ? (catOf(cat)[0] || {}).icon || '🧩' : '🧩') + '</span>' + cat + '<span class="cnt">' + n + '</span></div>';
+      }).join('');
+      c.dataset.done = '1';
+    }
+    var f = $('flywheel');
+    if (f && !f.dataset.done) {
+      f.innerHTML = '<p style="color:#8fa1b3;font-size:13.5px;">选款由数据决定 → 收录进库并建模 → 玩家云把玩产生行为数据 → 结合行情热度 → 决定下一批选款。周而复始，越玩越懂这个圈子。</p>' +
+        '<div class="steps">' +
+        '<span class="step">📊 数据说话选款</span><span class="arr">→</span>' +
+        '<span class="step">🗂 收录 + 3D + 声音档案</span><span class="arr">→</span>' +
+        '<span class="step">🎮 玩家云把玩</span><span class="arr">→</span>' +
+        '<span class="step">📈 行情 × 热度反馈</span><span class="arr">→</span>' +
+        '<span class="step">🔄 下一批选款</span></div>';
+      f.dataset.done = '1';
+    }
+    bindCards($('top3'));
+    bindCats($('cats'));
+  }
+
+  function stat(n, l) { return '<div class="stat"><div class="num">' + n + '</div><div class="lab">' + l + '</div></div>'; }
+
+  function renderCatalog(cat) {
+    var f = $('filters');
+    if (!f.dataset.done) {
+      f.innerHTML = '<button data-cat="" class="on">全部 ' + ITEMS.length + '</button>' + CATS.map(function (c) {
+        var n = catOf(c).length; if (!n) return '';
+        return '<button data-cat="' + c + '"' + (c === cat ? ' class="on"' : '') + '>' + c + ' ' + n + '</button>';
+      }).join('');
+      f.dataset.done = '1';
+      f.addEventListener('click', function (e) {
+        var b = e.target.closest('button'); if (!b) return;
+        location.hash = '#/catalog' + (b.dataset.cat ? '?cat=' + encodeURIComponent(b.dataset.cat) : '');
+      });
+    } else {
+      var btns = f.querySelectorAll('button');
+      btns.forEach(function (b) { b.classList.toggle('on', b.dataset.cat === (cat || '')); });
+    }
+    var list = cat ? catOf(cat) : ITEMS.slice();
+    var g = $('catalog-grid');
+    g.innerHTML = list.map(cardHTML).join('') || '<p style="color:#5d6f80;padding:20px;">该品类暂无展品。</p>';
+    bindCards(g);
+  }
+
+  function renderItem(id) {
+    var i = byId(id);
+    if (!i) { location.hash = '#/catalog'; return; }
+    var ready = i.modelStatus && i.modelStatus.indexOf('完成') >= 0;
+    var signals = (i.signals || '').split(/[,，、]/).filter(Boolean);
+    var html =
+      '<div class="sec" style="margin-top:0;"><a href="#/catalog" style="color:#8fa1b3;text-decoration:none;font-size:13px;">← 返回展品库</a></div>' +
+      '<div class="detail">' +
+      '<div class="dpanel">' +
+        '<h1>' + iconOf(i) + ' ' + esc(i.model) + '</h1>' +
+        '<div class="d-brand">' + esc(i.brand) + ' · ' + esc(i.category) + '</div>' +
+        '<div class="d-price">' + esc(i.price) + '<span class="st">' + esc(i.priceStatus) + '</span></div>' +
+        '<div class="kv">' +
+          kv('把玩场景', esc(i.scene)) +
+          kv('玩法结构', esc(i.play)) +
+          kv('热度依据', esc(i.heatBasis)) +
+          kv('信号源', signals.map(function (s) { return '<span class="tag">' + esc(s) + '</span>'; }).join('') + ' · ' + i.srcCount + ' 个独立来源 · ' + esc(i.signalLevel)) +
+          kv('收录优先级', esc(i.priority)) +
+          kv('3D 状态', '<span class="tag ' + (ready ? 'ready' : '') + '">' + esc(i.modelStatus) + '</span>') +
+          (i.note ? kv('备注', esc(i.note)) : '') +
+        '</div>' +
+        (PLAYABLE[id]
+          ? '<div class="playbox"><div class="pb-t">🎮 已有可交互云把玩 Demo</div><a class="btn solid" href="#/play/' + id + '">进入把玩 →</a></div>'
+          : '') +
+      '</div>' +
+      '<div class="dpanel" style="text-align:center;">' +
+        '<div style="font-size:13px;color:#8fa1b3;margin-bottom:4px;">六维评分 · 满分 30</div>' +
+        radarSVG(i) +
+      '</div>' +
+      '</div>';
+    $('item-body').innerHTML = html;
+  }
+
+  function kv(k, v) { return '<div class="row"><span class="k">' + k + '</span><span class="v">' + v + '</span></div>'; }
+
+  function renderPlay(id) {
+    var i = byId(id);
+    if (!i || !PLAYABLE[id]) { location.hash = '#/catalog'; return; }
+    $('play-body').innerHTML =
+      '<div class="sec" style="margin-top:0;"><a href="#/item/' + id + '" style="color:#8fa1b3;text-decoration:none;font-size:13px;">← 返回 ' + esc(i.model) + ' 详情</a></div>' +
+      '<div class="playwrap">' +
+        '<div class="playbar"><span class="t">' + i.icon + ' 云把玩 · ' + esc(i.brand) + ' ' + esc(i.model) + '</span>' +
+        '<span class="hint">拖拽滑块 · 松手磁吸归位 · 拖到端部触发磁吸/震感 · 支持声音</span></div>' +
+        '<iframe src="' + PLAYABLE[id] + '" title="云把玩 Demo" loading="lazy"></iframe>' +
+      '</div>';
+  }
+
+  /* ---------- 事件绑定 ---------- */
+  function bindCards(root) {
+    if (!root) return;
+    root.addEventListener('click', function (e) {
+      var c = e.target.closest('.card'); if (!c) return;
+      location.hash = '#/item/' + c.dataset.id;
+    });
+  }
+  function bindCats(root) {
+    if (!root) return;
+    root.addEventListener('click', function (e) {
+      var b = e.target.closest('.catbtn'); if (!b) return;
+      location.hash = '#/catalog?cat=' + encodeURIComponent(b.dataset.cat);
+    });
+  }
+
+  /* ---------- 路由 ---------- */
+  function parseHash() {
+    var h = location.hash.replace(/^#\/?/, '') || 'home';
+    var q = h.indexOf('?');
+    var path = q >= 0 ? h.slice(0, q) : h;
+    var query = {};
+    if (q >= 0) h.slice(q + 1).split('&').forEach(function (p) { var kv = p.split('='); query[decodeURIComponent(kv[0])] = decodeURIComponent(kv[1] || ''); });
+    var seg = path.split('/').filter(Boolean);
+    return { name: seg[0] || 'home', id: Number(seg[1]) || 0, cat: query.cat || '' };
+  }
+  function router() {
+    var r = parseHash();
+    var views = ['home', 'catalog', 'item', 'play', 'about'];
+    views.forEach(function (v) { $('view-' + v).classList.toggle('on', v === r.name); });
+    var navs = document.querySelectorAll('.nav a');
+    navs.forEach(function (a) { a.classList.toggle('on', a.dataset.route === r.name); });
+    if (r.name === 'home') renderHome();
+    else if (r.name === 'catalog') renderCatalog(r.cat);
+    else if (r.name === 'item') renderItem(r.id);
+    else if (r.name === 'play') renderPlay(r.id);
+    window.scrollTo(0, 0);
+  }
+  window.addEventListener('hashchange', router);
+
+  /* ---------- 顶部统计（静态） ---------- */
+  var ts = $('topstats');
+  if (ts) {
+    var first = ITEMS.filter(function (i) { return i.priority === '首批'; }).length;
+    ts.innerHTML = '<span>首批 <b>' + first + '</b> 款</span><span>在库 <b>' + ITEMS.length + '</b> 款</span>';
+  }
+
+  router();
+})();
+</script>
+</body>
+</html>

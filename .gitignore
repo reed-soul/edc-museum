@@ -1,0 +1,13 @@
+# macOS
+.DS_Store
+
+# 临时草稿（飞书文档 RC XML）
+draft_b5d5239e_folder/
+
+# 日志与缓存
+*.log
+__pycache__/
+*.pyc
+
+# 本地验证产物（浏览器回归截图，不入库）
+/tmp/

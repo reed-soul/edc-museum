@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>云闪 · EDC 3D 把玩展厅（验证闭环 Demo）</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { width:100%; height:100%; overflow:hidden; background:#101114; font-family:'PingFang SC','Roboto','Segoe UI',Arial,sans-serif; color:#E8E6E1; }
+  #stage { position:fixed; inset:0; }
+  canvas { display:block; }
+
+  /* 顶部信息 */
+  #ui-top { position:fixed; top:16px; left:18px; z-index:10; pointer-events:none; }
+  #ui-top .kicker { font-size:11px; letter-spacing:2px; color:#8AA79F; text-transform:uppercase; }
+  #ui-top h1 { font-size:20px; font-weight:600; margin-top:2px; letter-spacing:1px; }
+  #ui-top .sub { font-size:12px; color:#9AA0A6; margin-top:4px; }
+  #ui-top .mode-badge { display:inline-block; margin-top:8px; font-size:11px; padding:3px 10px; border-radius:20px; background:rgba(23,143,128,0.18); color:#5FD6C4; border:1px solid rgba(23,143,128,0.4); }
+
+  /* 右侧实拍参考 */
+  #ui-gallery { position:fixed; top:16px; right:18px; z-index:10; width:150px; }
+  #ui-gallery .g-title { font-size:11px; color:#8AA79F; letter-spacing:1px; margin-bottom:8px; }
+  #ui-gallery img { width:100%; border-radius:10px; display:block; margin-bottom:8px; border:1px solid rgba(255,255,255,0.12); background:#000; }
+  #ui-gallery .g-cap { font-size:10px; color:#7E848C; text-align:center; margin-top:-4px; margin-bottom:10px; }
+
+  /* 底部控制条 */
+  #ui-bottom { position:fixed; bottom:18px; left:50%; transform:translateX(-50%); z-index:10; display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
+  .btn { font-size:13px; padding:9px 18px; border-radius:24px; border:1px solid rgba(255,255,255,0.18); background:rgba(30,33,38,0.85); color:#E8E6E1; cursor:pointer; transition:all .15s; backdrop-filter:blur(6px); }
+  .btn:hover { border-color:#5FD6C4; color:#5FD6C4; }
+  .btn.active { background:rgba(23,143,128,0.35); border-color:#5FD6C4; color:#A8F0E4; }
+  .btn:disabled { opacity:.35; cursor:not-allowed; }
+
+  /* 验证面板 */
+  #panel { position:fixed; left:18px; bottom:18px; z-index:10; width:235px; font-size:11px; line-height:1.8; color:#B8BEC4; background:rgba(20,23,26,0.82); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:12px 14px; backdrop-filter:blur(6px); pointer-events:none; }
+  #panel h4 { font-size:12px; color:#E8E6E1; margin-bottom:4px; }
+  #panel .ok { color:#52C41A; }
+  #panel .todo { color:#FAAD14; }
+
+  /* 震动反馈 */
+  #rumble { position:fixed; right:18px; bottom:18px; z-index:10; font-size:12px; color:#FFD591; background:rgba(250,173,20,0.12); border:1px solid rgba(250,173,20,0.35); padding:6px 12px; border-radius:16px; opacity:0; transition:opacity .12s; pointer-events:none; }
+  #rumble.on { opacity:1; }
+
+  #fallback { display:none; position:fixed; inset:0; z-index:99; background:#101114; color:#E8E6E1; padding:40px 24px; font-size:14px; line-height:2; }
+  #fallback .code { color:#5FD6C4; }
+
+  @media (max-width:640px){
+    #ui-gallery { width:108px; }
+    #panel { display:none; }
+    #ui-top h1 { font-size:16px; }
+    .btn { font-size:12px; padding:8px 14px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="stage"></div>
+
+<div id="ui-top">
+  <div class="kicker">EDC DIGITAL MUSEUM · 验证闭环 Demo</div>
+  <h1>开物KOVO 云闪</h1>
+  <div class="sub">磁吸轨道 · 巴克球 · 弹簧珠 · 复合推牌</div>
+  <span class="mode-badge" id="modeBadge">🔍 360° 查看</span>
+</div>
+
+<div id="ui-gallery">
+  <div class="g-title">实拍参考（非3D模型）</div>
+  <img src="assets/yunshan-main.jpg" alt="云闪主图">
+  <div class="g-cap">PEI 涟漪版</div>
+  <img src="assets/yunshan-peek.jpg" alt="云闪PEEK版">
+  <div class="g-cap">PEEK 版特写</div>
+</div>
+
+<div id="panel">
+  <h4>验证点</h4>
+  <span class="ok">✓</span> Web3D 实时渲染（Three.js）<br>
+  <span class="ok">✓</span> 360° 展台查看<br>
+  <span class="ok">✓</span> 滑块把玩 + 段落吸附<br>
+  <span class="ok">✓</span> 程序化合成叮叮声<br>
+  <span class="ok">✓</span> 巴克球端部震感反馈<br>
+  <span class="todo">…</span> AI 图生 3D 真实模型替换（待接入）
+</div>
+
+<div id="rumble">⚡ 震感反馈</div>
+
+<div id="ui-bottom">
+  <button class="btn active" id="btnView">🔍 360° 查看</button>
+  <button class="btn" id="btnPlay">🕹️ 把玩模拟</button>
+  <button class="btn" id="btnSound">🔊 声音：开</button>
+  <button class="btn" id="btnReset">↺ 重置</button>
+</div>
+
+<div id="fallback"></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three.module.js",
+    "three/addons/": "./vendor/"
+  }
+}
+</script>
+
+<script type="module">
+import { yunshanConfig as CFG } from './models/yunshan.js';
+(async function(){
+  const fallback = document.getElementById('fallback');
+  function showFallback(msg){
+    fallback.style.display='block';
+    fallback.innerHTML = '<div style="font-size:16px;font-weight:600;margin-bottom:12px;">页面未能启动</div><div>'+msg+'</div><div style="margin-top:12px;">请确认网络可访问 <span class="code">cdn.jsdelivr.net</span>（Three.js CDN），并用支持 WebGL 的现代浏览器打开本文件。</div>';
+    document.getElementById('stage').style.display='none';
+  }
+  if(!window.WebGLRenderingContext){
+    showFallback('当前浏览器不支持 WebGL。'); return;
+  }
+
+  let THREE=null, OrbitControls=null, RoomEnvironment=null;
+  try{
+    const m = await import('three');
+    THREE = m;
+    OrbitControls = (await import('three/addons/controls/OrbitControls.js')).OrbitControls;
+    RoomEnvironment = (await import('three/addons/environments/RoomEnvironment.js')).RoomEnvironment;
+  }catch(e){
+    showFallback('Three.js 加载失败：'+e.message); return;
+  }
+  if(!THREE || !OrbitControls){ showFallback('Three.js 模块加载不完整。'); return; }
+
+  // ---------- 基础场景 ----------
+  const stage = document.getElementById('stage');
+  const renderer = new THREE.WebGLRenderer({ antialias:true, preserveDrawingBuffer:true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.shadowMap.enabled = true;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.1;
+  stage.appendChild(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x101114);
+
+  const camera = new THREE.PerspectiveCamera(42, window.innerWidth/window.innerHeight, 0.1, 200);
+  camera.position.set(...CFG.camera.position);
+  camera.lookAt(...CFG.camera.target);
+
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.target.set(...CFG.camera.target);
+  controls.minDistance = CFG.camera.minDistance;
+  controls.maxDistance = CFG.camera.maxDistance;
+  controls.maxPolarAngle = Math.PI * CFG.camera.maxPolarAngle;
+
+  // 环境反射（金属质感）
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  try{
+    scene.environment = pmrem.fromScene(new RoomEnvironment(renderer), 0.04).texture;
+  }catch(e){ /* 环境不可用时忽略 */ }
+
+  // ---------- 灯光 ----------
+  scene.add(new THREE.AmbientLight(0x40404a, 0.55));
+  const key = new THREE.DirectionalLight(0xfff4e0, 1.6);
+  key.position.set(6, 10, 7);
+  key.castShadow = true;
+  scene.add(key);
+  const cool = new THREE.PointLight(0x5fb4ff, 8, 30);
+  cool.position.set(-7, 3, -6);
+  scene.add(cool);
+  const warm = new THREE.PointLight(0xff9a4d, 7, 30);
+  warm.position.set(5, 2, 8);
+  scene.add(warm);
+
+  // ---------- 展台 ----------
+  const podiumGroup = new THREE.Group();
+  const podium = new THREE.Mesh(
+    new THREE.CylinderGeometry(3.4, 4.1, 0.55, 64),
+    new THREE.MeshStandardMaterial({ color:0x1c1f24, roughness:0.7, metalness:0.25 })
+  );
+  podium.position.y = -0.28;
+  podium.receiveShadow = true;
+  podiumGroup.add(podium);
+
+  const topDisc = new THREE.Mesh(
+    new THREE.CylinderGeometry(3.4, 3.4, 0.06, 64),
+    new THREE.MeshStandardMaterial({ color:0x2a2e34, roughness:0.5, metalness:0.35 })
+  );
+  topDisc.position.y = 0.02;
+  podiumGroup.add(topDisc);
+
+  const ring = new THREE.Mesh(
+    new THREE.TorusGeometry(3.55, 0.028, 12, 96),
+    new THREE.MeshBasicMaterial({ color:0x1f8f7f })
+  );
+  ring.rotation.x = Math.PI/2;
+  ring.position.y = 0.045;
+  podiumGroup.add(ring);
+
+  const ground = new THREE.Mesh(
+    new THREE.CircleGeometry(40, 64),
+    new THREE.MeshStandardMaterial({ color:0x0d0e10, roughness:0.92, metalness:0 })
+  );
+  ground.rotation.x = -Math.PI/2;
+  ground.position.y = -0.56;
+  scene.add(ground);
+  scene.add(podiumGroup);
+
+  // ---------- 云闪模型（程序化近似，对照实拍：扁胶囊一体壳体 + 金属饰条） ----------
+  const product = new THREE.Group();
+
+  // PEI 涟漪纹理（程序化凹凸：同心波纹 + 细密颗粒）
+  function rippleTexture(){
+    const c = document.createElement('canvas');
+    c.width = 512; c.height = 512;
+    const g = c.getContext('2d');
+    g.fillStyle = '#808080'; g.fillRect(0,0,512,512);
+    const rip = CFG.model.shell.ripple;
+    for(let i=0;i<rip.rings;i++){
+      const r = rip.start + i*rip.gap;
+      g.beginPath();
+      g.ellipse(256, 256, r, r*0.72, 0, 0, Math.PI*2);
+      g.strokeStyle = i%2 ? 'rgba(64,64,64,0.55)' : 'rgba(196,196,196,0.55)';
+      g.lineWidth = rip.lineWidthBase + (i%3)*2.5;
+      g.stroke();
+    }
+    for(let i=0;i<rip.grains;i++){
+      g.fillStyle = Math.random()>0.5 ? 'rgba(110,110,110,0.25)' : 'rgba(190,190,190,0.22)';
+      g.fillRect(Math.random()*512, Math.random()*512, 2, 2);
+    }
+    const t = new THREE.CanvasTexture(c);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(2.4, 1.1);
+    return t;
+  }
+  const rippleTex = rippleTexture();
+
+  // 扁胶囊壳体（LatheGeometry 旋转胶囊轮廓 → 压扁截面 → 长轴沿 X）
+  function capsuleLathe(L, R, seg){
+    const pts = [];
+    for(let i=0;i<=seg;i++){
+      const a = -Math.PI/2 + (Math.PI/2)*(i/seg);
+      pts.push(new THREE.Vector2(Math.cos(a)*R, -L + Math.sin(a)*R));
+    }
+    pts.push(new THREE.Vector2(R, L));
+    for(let i=1;i<=seg;i++){
+      const a = (Math.PI/2)*(i/seg);
+      pts.push(new THREE.Vector2(Math.cos(a)*R, L + Math.sin(a)*R));
+    }
+    return pts;
+  }
+  const sh = CFG.model.shell;
+  const shellGeo = new THREE.LatheGeometry(capsuleLathe(sh.halfLength, sh.radius, sh.outlineSegments), sh.segments);
+  shellGeo.scale(1, 1, sh.squash); // 截面压扁 → 扁胶囊
+  shellGeo.rotateZ(Math.PI/2);     // 长轴转到 X
+  const shell = new THREE.Mesh(shellGeo, new THREE.MeshPhysicalMaterial({
+    color:sh.color, roughness:sh.roughness, metalness:sh.metalness,
+    transparent:true, opacity:sh.opacity,
+    transmission:sh.transmission, clearcoat:sh.clearcoat, clearcoatRoughness:sh.clearcoatRoughness,
+    bumpMap:rippleTex, bumpScale:sh.bumpScale, side:THREE.DoubleSide
+  }));
+  shell.castShadow = true;
+  product.add(shell);
+
+  // 内部轨道杆（贯穿，铜金）
+  const rd = CFG.model.rod;
+  const rod = new THREE.Mesh(
+    new THREE.CylinderGeometry(rd.radius, rd.radius, rd.length, 16),
+    new THREE.MeshStandardMaterial({ color:rd.color, roughness:rd.roughness, metalness:rd.metalness })
+  );
+  rod.rotation.z = Math.PI/2;
+  rod.position.y = rd.y;
+  product.add(rod);
+
+  // 金属饰条（嵌于壳体上部，KOVO 刻字贴图）
+  const st = CFG.model.strip;
+  const strip = new THREE.Mesh(
+    new THREE.BoxGeometry(st.length, st.width, st.depth),
+    new THREE.MeshStandardMaterial({ color:st.color, roughness:st.roughness, metalness:st.metalness })
+  );
+  strip.position.set(0, st.y, st.z);
+  product.add(strip);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 512; canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#2a2e34'; ctx.fillRect(0,0,512,64);
+  ctx.fillStyle = '#d8dbe0'; ctx.font = 'bold 40px Arial';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(st.text, 256, 34);
+  const textTex = new THREE.CanvasTexture(canvas);
+  const tp = st.textPlate;
+  const textPlate = new THREE.Mesh(
+    new THREE.PlaneGeometry(tp.width, tp.height),
+    new THREE.MeshBasicMaterial({ map:textTex, transparent:true, opacity:0.92 })
+  );
+  textPlate.position.set(0, st.y, tp.z);
+  product.add(textPlate);
+
+  // 内滑块（套在轨道杆上，可把玩）
+  const sl = CFG.model.slider;
+  const sliderGroup = new THREE.Group();
+  const sliderBody = new THREE.Mesh(
+    new THREE.CapsuleGeometry(sl.radius, sl.length, 8, 16),
+    new THREE.MeshStandardMaterial({ color:sl.color, roughness:sl.roughness, metalness:sl.metalness })
+  );
+  sliderBody.rotation.z = Math.PI/2;
+  sliderBody.position.y = sl.y;
+  sliderBody.castShadow = true;
+  sliderGroup.add(sliderBody);
+  const sliderCap = new THREE.Mesh(
+    new THREE.CylinderGeometry(sl.cap.radius, sl.cap.radius, sl.cap.height, 20),
+    new THREE.MeshStandardMaterial({ color:sl.cap.color, roughness:sl.cap.roughness, metalness:sl.cap.metalness })
+  );
+  sliderCap.position.set(0, sl.y + sl.cap.yOffset, 0);
+  sliderGroup.add(sliderCap);
+  product.add(sliderGroup);
+
+  // 端部磁吸点（低调，两端各一颗金属球）
+  const en = CFG.model.ends;
+  const ballMat = new THREE.MeshStandardMaterial({ color:en.color, roughness:en.roughness, metalness:en.metalness });
+  const BALL_GROUPS = [];
+  [-1, 1].forEach(function(side){
+    const g = new THREE.Group();
+    const b = new THREE.Mesh(new THREE.SphereGeometry(en.radius, 24, 24), ballMat);
+    b.position.set(side*en.x, en.y, 0);
+    g.add(b);
+    g.userData.side = side;
+    BALL_GROUPS.push(g);
+    product.add(g);
+  });
+
+  product.position.y = CFG.model.productY;
+  scene.add(product);
+
+  // 隐形碰撞盒：扩大把玩拖动命中区（raycast 命中几何，不关心透明度）
+  // 碰撞盒由壳体几何推导，改配置后自动适配
+  const hitbox = new THREE.Mesh(
+    new THREE.BoxGeometry(sh.halfLength*2 + 3.8, sh.radius*2 + 0.5, sh.radius*2*sh.squash + 1.1),
+    new THREE.MeshBasicMaterial({ transparent:true, opacity:0, depthWrite:false })
+  );
+  hitbox.position.y = CFG.model.slider.y;
+  product.add(hitbox);
+
+  // ---------- 把玩交互状态 ----------
+  const SLIDE_MIN = CFG.play.slideMin, SLIDE_MAX = CFG.play.slideMax;
+  const SNAP_POS = CFG.play.snapPos;
+  let sliderX = 0;
+  sliderGroup.position.x = 0;
+  let mode = 'view';            // view | play
+  let dragging = false;
+  const dragPlaneY = CFG.model.slider.y + CFG.model.productY; // 滑块世界高度
+  let lastSnapIndex = -1;
+  let rumbleTimer = 0;
+  let ballAnim = { active:false, t:0, side:1 };
+  let shakeAmp = 0;
+
+  // 段落：滑块吸附位置
+  function nearestSnap(x){
+    let best = SNAP_POS[0], bd = Math.abs(x-SNAP_POS[0]);
+    for(let i=1;i<SNAP_POS.length;i++){ const d=Math.abs(x-SNAP_POS[i]); if(d<bd){bd=d; best=SNAP_POS[i];} }
+    return { pos:best, dist:bd, index:SNAP_POS.indexOf(best) };
+  }
+
+  // ---------- Web Audio 程序化音效 ----------
+  let audioCtx = null;
+  let soundOn = true;
+  function ensureAudio(){
+    if(!audioCtx){
+      try{ audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){}
+    }
+    if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  }
+  function beep(freq, dur, vol, type){
+    if(!soundOn || !audioCtx) return;
+    const t = audioCtx.currentTime;
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = type || 'sine';
+    o.frequency.setValueAtTime(freq, t);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t+0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(t); o.stop(t+dur+0.02);
+  }
+  function playDing(high){
+    // 叮：清脆高频，交替高低音
+    const d = CFG.audio.ding;
+    beep(high ? d.high : d.low, d.dur, d.vol, d.type);
+    beep((high ? d.high : d.low) * 1.5, d.echoDur, d.echoVol, 'sine');
+  }
+  function playSnap(){
+    const s = CFG.audio.snap;
+    beep(s.freq, s.dur, s.vol, s.type);
+  }
+  function playBoom(){
+    // 砰：巴克球磁吸撞击，低频 + 噪声
+    const b = CFG.audio.boom;
+    beep(b.freq, b.dur, b.vol, 'sine');
+    if(audioCtx){
+      const t = audioCtx.currentTime;
+      const buf = audioCtx.createBuffer(1, audioCtx.sampleRate*b.noiseDur, audioCtx.sampleRate);
+      const d = buf.getChannelData(0);
+      for(let i=0;i<d.length;i++) d[i] = (Math.random()*2-1) * Math.pow(1-i/d.length, 2);
+      const src = audioCtx.createBufferSource();
+      src.buffer = buf;
+      const f = audioCtx.createBiquadFilter();
+      f.type='lowpass'; f.frequency.value = b.lowpass;
+      const g = audioCtx.createGain();
+      g.gain.setValueAtTime(b.noiseVol, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t+b.noiseDur);
+      src.connect(f); f.connect(g); g.connect(audioCtx.destination);
+      src.start(t);
+    }
+  }
+
+  // ---------- 交互：模式切换 / 拖拽 ----------
+  const btnView = document.getElementById('btnView');
+  const btnPlay = document.getElementById('btnPlay');
+  const btnSound = document.getElementById('btnSound');
+  const btnReset = document.getElementById('btnReset');
+  const modeBadge = document.getElementById('modeBadge');
+  const rumbleEl = document.getElementById('rumble');
+  const raycaster = new THREE.Raycaster();
+  const pointer = new THREE.Vector2();
+  let dragOffsetX = 0;
+
+  function setMode(m){
+    mode = m;
+    controls.enabled = (m === 'view');
+    btnView.classList.toggle('active', m==='view');
+    btnPlay.classList.toggle('active', m==='play');
+    modeBadge.textContent = m==='view' ? '🔍 360° 查看' : '🕹️ 把玩模拟（拖动滑块）';
+    if(m==='play') ensureAudio();
+  }
+  btnView.addEventListener('click', ()=>setMode('view'));
+  btnPlay.addEventListener('click', ()=>setMode('play'));
+  btnSound.addEventListener('click', ()=>{
+    soundOn = !soundOn;
+    btnSound.textContent = soundOn ? '🔊 声音：开' : '🔇 声音：关';
+    if(soundOn) ensureAudio();
+  });
+  btnReset.addEventListener('click', ()=>{
+    sliderX = 0; sliderGroup.position.x = 0; lastSnapIndex = -1;
+    ballAnim.active = false;
+    product.rotation.y = 0;
+  });
+
+  function setPointer(e){
+    const rect = renderer.domElement.getBoundingClientRect();
+    pointer.x = ((e.clientX||e.touches[0].clientX) - rect.left) / rect.width * 2 - 1;
+    pointer.y = -(((e.clientY||e.touches[0].clientY) - rect.top) / rect.height) * 2 + 1;
+  }
+  function hitSlider(e){
+    setPointer(e);
+    raycaster.setFromCamera(pointer, camera);
+    // 把玩模式：命中产品任意部位（含透明外壳/巴克球/饰条）都视为抓住滑块
+    const hits = raycaster.intersectObjects(product.children, true);
+    return hits.length > 0;
+  }
+  function onDown(e){
+    if(mode!=='play') return;
+    if(e.cancelable) e.preventDefault();
+    ensureAudio();
+    if(hitSlider(e)){
+      dragging = true;
+      setPointer(e);
+      const v = new THREE.Vector3(pointer.x, pointer.y, 0.5).unproject(camera);
+      const dir = v.sub(camera.position).normalize();
+      const dist = (dragPlaneY - camera.position.y) / dir.y;
+      const planePoint = camera.position.clone().add(dir.multiplyScalar(dist));
+      dragOffsetX = planePoint.x - sliderGroup.position.x;
+      renderer.domElement.style.cursor = 'grabbing';
+    }
+  }
+  function onMove(e){
+    if(mode!=='play' || !dragging) return;
+    if(e.cancelable) e.preventDefault();
+    setPointer(e);
+    const v = new THREE.Vector3(pointer.x, pointer.y, 0.5).unproject(camera);
+    const dir = v.sub(camera.position).normalize();
+    const dist = (dragPlaneY - camera.position.y) / dir.y;
+    const planePoint = camera.position.clone().add(dir.multiplyScalar(dist));
+    let nx = Math.max(SLIDE_MIN, Math.min(SLIDE_MAX, planePoint.x - dragOffsetX));
+    const snap = nearestSnap(nx);
+    // 段落吸附提示：进入吸附区间且换档
+    if(snap.dist < CFG.play.snapDist){
+      const si = snap.index;
+      if(si !== lastSnapIndex){
+        lastSnapIndex = si;
+        if(Math.abs(nx - snap.pos) < CFG.play.snapDist * 0.82) playSnap();
+      }
+      nx = nx + (snap.pos - nx) * CFG.play.snapMagnet; // 磁性牵引
+    } else {
+      lastSnapIndex = -1;
+    }
+    sliderX = nx;
+    sliderGroup.position.x = nx;
+    // 端部触发（放宽阈值，接近边缘即触发巴克球）
+    if(nx <= SLIDE_MIN+CFG.play.endThreshold || nx >= SLIDE_MAX-CFG.play.endThreshold){
+      triggerEnd(nx>0?1:-1);
+    }
+  }
+  function onUp(){
+    if(!dragging) return;
+    dragging = false;
+    renderer.domElement.style.cursor = 'grab';
+    // 松手归位到最近档位（把玩回弹）
+    const snap = nearestSnap(sliderX);
+    sliderX = snap.pos;
+    sliderGroup.position.x = snap.pos;
+  }
+
+  function triggerEnd(side){
+    if(ballAnim.active) return;
+    ballAnim = { active:true, t:0, side:side };
+    playBoom();
+    rumbleEl.classList.add('on');
+    clearTimeout(rumbleTimer);
+    rumbleTimer = setTimeout(()=>rumbleEl.classList.remove('on'), CFG.play.rumbleMs);
+  }
+
+  renderer.domElement.addEventListener('pointerdown', onDown);
+  window.addEventListener('pointermove', onMove);
+  window.addEventListener('pointerup', onUp);
+  renderer.domElement.style.cursor = 'grab';
+
+  // 声音首启（用户手势解锁）
+  renderer.domElement.addEventListener('pointerdown', ()=>ensureAudio(), { once:false });
+
+  // 调试句柄（验证用）
+  window.__dbg = {
+    get sliderX(){ return sliderX; },
+    get mode(){ return mode; },
+    get dragging(){ return dragging; },
+    get rumble(){ return rumbleEl.className; },
+    sliderScreen: function(){
+      const v = new THREE.Vector3();
+      sliderGroup.getWorldPosition(v);
+      v.project(camera);
+      return { x:(v.x*0.5+0.5)*window.innerWidth, y:(-v.y*0.5+0.5)*window.innerHeight };
+    }
+  };
+
+  // ---------- 动画循环 ----------
+  const clock = new THREE.Clock();
+  function animate(){
+    requestAnimationFrame(animate);
+    const dt = Math.min(clock.getDelta(), 0.05);
+    const t = clock.elapsedTime;
+
+    // 查看模式：展台缓慢自转
+    if(mode==='view'){
+      product.rotation.y += dt * 0.35;
+    } else {
+      // 把玩模式：相机方向固定，模型不转
+    }
+
+    // 巴克球端部弹跳动画
+    if(ballAnim.active){
+      ballAnim.t += dt * 2.2;
+      const p = ballAnim.t;
+      const g = BALL_GROUPS[ballAnim.side>0?1:0];
+      const push = Math.sin(Math.min(p,1) * Math.PI) * 0.5;
+      g.position.x = -ballAnim.side * push;
+      g.rotation.y += dt * 6;
+      if(p >= 1){ ballAnim.active = false; g.position.x = 0; }
+    }
+
+    // 滑块颤动（端部震感）
+    if(ballAnim.active && ballAnim.t < 0.45){
+      shakeAmp = (0.45 - ballAnim.t) * CFG.play.shakeAmp;
+      sliderGroup.position.y = CFG.model.slider.y + Math.sin(t*CFG.play.shakeFreq) * shakeAmp;
+    } else {
+      sliderGroup.position.y = CFG.model.slider.y;
+    }
+    // 把玩模式：滑块发光提示可拖
+    if(mode==='play'){
+      sliderBody.material.emissive.setHex(0x3a2418);
+      sliderBody.material.emissiveIntensity = 0.5 + Math.sin(t*5)*0.3;
+      sliderCap.material.emissive.setHex(0x3a2a10);
+      sliderCap.material.emissiveIntensity = 0.3 + Math.sin(t*5)*0.2;
+    } else {
+      sliderBody.material.emissive.setHex(0x000000);
+      sliderBody.material.emissiveIntensity = 0;
+      sliderCap.material.emissive.setHex(0x000000);
+      sliderCap.material.emissiveIntensity = 0;
+    }
+
+    // 展台光环呼吸
+    ring.material.color.setHSL(0.46, 0.65, 0.42 + Math.sin(t*1.4)*0.06);
+
+    controls.update();
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  window.addEventListener('resize', ()=>{
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+})();
+</script>
+</body>
+</html>
