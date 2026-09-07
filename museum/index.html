@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EDC 数字博物馆 · 云把玩</title>
+<title>EDC 数字博物馆</title>
 <link rel="stylesheet" href="style.css">
 <script src="data.js"></script>
 </head>
@@ -283,10 +283,12 @@
     var seg = path.split('/').filter(Boolean);
     return { name: seg[0] || 'home', id: Number(seg[1]) || 0, cat: query.cat || '' };
   }
+  var TITLES = { home: 'EDC 数字博物馆', catalog: '展品库 · EDC 数字博物馆', item: '展品详情 · EDC 数字博物馆', play: '云把玩 · EDC 数字博物馆', about: '关于 · EDC 数字博物馆' };
   function router() {
     var r = parseHash();
     var views = ['home', 'catalog', 'item', 'play', 'about'];
     views.forEach(function (v) { $('view-' + v).classList.toggle('on', v === r.name); });
+    document.title = TITLES[r.name] || TITLES.home;
     var navs = document.querySelectorAll('.nav a');
     navs.forEach(function (a) { a.classList.toggle('on', a.dataset.route === r.name); });
     if (r.name === 'home') renderHome();
